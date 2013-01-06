@@ -12,7 +12,21 @@ riak-r-client
 
 (Easily installed in R through `Packages & Data -> Package Installer`)
 
+# Status
+
+- A work in progress. Probably slow and buggy at the moment. The interface is very likely to change.
+
+- **TODO**: 
+  - implement additional store/fetch options
+  - fix mapred  
+  - delete object
+  - bucket props
+  - link walking
+  - list resources
+  - list buckets
+
 # Demo
+
 Contents of demo.R pasted below:
 
 ```
