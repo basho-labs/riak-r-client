@@ -3,6 +3,16 @@ riak-r-client
 © 2013 Dave Parfitt
 
 
+# Dependencies:
+
+* bitops
+* RCurl
+* httr
+* rjson
+
+(Easily installed in R through `Packages & Data -> Package Installer`)
+
+# Demo
 Contents of demo.R pasted below:
 
 ```
