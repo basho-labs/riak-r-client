@@ -23,6 +23,11 @@ source("~/basho/riak-r-client/riak.R")
 
 conn <- riak_connection("localhost",10018)
 
+
+#######
+## basic stats demo
+#######
+
 stats <- riak_status(conn)
 print(stats$riak_kv_vnodes_running)
 
@@ -52,6 +57,7 @@ for(i in seq(1,100)) {
 }
 
 # stream=TRUE doesn't work quite right yet
+# don't list_keys on a production system!!
 allkeys <- riak_list_keys(conn, bucket, stream=FALSE)
 print(length(allkeys$keys))
 print(allkeys$keys[10])
