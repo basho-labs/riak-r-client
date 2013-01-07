@@ -2,7 +2,7 @@
 # 
 # riak.ml: Riak R Client
 #
-# Copyright (c) 2013 Dave Parfitt
+# Copyright (c) 2013 Dave Parfitt and Basho Technologies
 # All Rights Reserved.
 #
 # This file is provided to you under the Apache License,
