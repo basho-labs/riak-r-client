@@ -24,7 +24,8 @@ riak-r-client
   - link walking
   - list resources
   - list buckets
-
+  - retrier/resolver
+  
 # Demo
 
 Contents of demo.R pasted below:
