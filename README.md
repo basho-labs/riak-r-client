@@ -17,6 +17,7 @@ riak-r-client
   - list buckets
   - retrier/resolver
 
+  - currently the interface uses HTTP, however we'd like to add protobuffs in the future.
 
 # Dependencies:
 
