@@ -25,14 +25,22 @@ library(RCurl)
 library(httr)
 library(rjson)
 
+#### Code to generate URL's
+# use the connection to determine if the URL's are using the
+# new style or old style
+
 riak_base_url <- function(conn) {
-    base_url <- paste(conn$riak_proto, "://", conn$riak_host, ":", conn$riak_port, sep="")
+   if(conn$secure == TRUE) {
+      proto <- "https"
+    } else {
+      proto <- "http"
+    }
+    base_url <- paste(proto, "://", conn$riak_http_host, ":", conn$riak_http_port, sep="")
     base_url
 }
 
 riak_fetch_url <- function(conn, bucket, key) {
-    #TODO: change sep to be /
-    paste(riak_base_url(conn), "/buckets/", bucket, "/keys/", key, sep="")
+    paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
 }
 
 riak_store_url <- function(conn, bucket, key=NULL) {
@@ -75,47 +83,60 @@ riak_list_keys_url <- function(conn, bucket, stream=TRUE) {
     }
 }
 
-riak_check_status <- function(conn, expected_codes, response) {
-     status_code <- response$status_code
-    if(any(expected_codes == status_code)) {
-        response
-    } else {
-        # TODO
-        simpleError("Error fetching value from Riak")
-    }
-}
 
-riak_connection <- function(host, port) {
-    conn <- list(riak_host = host, riak_port = port, riak_proto = "http")
+### Riak operations
+
+riak_http_connection <- function(host, port, https=FALSE) {
+    conn <- list(riak_http_host = host, riak_http_port = port, secure=https)
     class(conn) <- "riak_connection"
     conn
 }
 
 print.riak_connection <- function(conn) {
-    p <- paste(conn$riak_proto, conn$riak_host, conn$riak_port, sep=",")
-    paste("Riak http connection (", p, ")", sep="")
+    if(conn$secure== TRUE) {
+      proto <- "https"
+    } else {
+      proto <- "http"
+    }
+    p <- paste(proto, conn$riak_http_host, conn$riak_http_port, sep=",")
+    url <- paste(proto, "://", conn$riak_http_host, ":", conn$riak_http_port, sep="")
+    paste("Riak http connection (", url, ")")
+}
+
+# check response code against a list of expected response codes
+riak_check_status <- function(conn, expected_codes, response) {
+     status_code <- response$status_code
+    if(any(expected_codes == status_code)) {
+        response
+    } else {
+        # TODO - better error handling
+        simpleError("Error in response from Riak")
+    }
 }
 
 riak_ping <- function(conn) {
     path <- riak_ping_url(conn)
     expected_codes = c(200)
     result <- GET(path)
-    riak_check_status(conn, expected_codes, result) 
+    riak_check_status(conn, expected_codes, result)
 }
 
 riak_status <- function(conn, as="json") {
     path <- riak_stats_url(conn)
     expected_codes = c(200)
-    
+
+    # TODO: fix headers
     if(as == "json") {
-        accept_json()
+        accept <- "application/json"
     } else {
-        add_headers(Accept="text/plain")
+        accept <- "text/plain"
     }
-    result <- GET(path)
+    result <- GET(path, add_headers(Accept = accept))
     content(riak_check_status(conn, expected_codes, result))
 }
 
+# riak_fetch_raw returns the entire HTTP response
+# you'll need to decode the response using content()
 riak_fetch_raw <- function(conn, bucket, key) {
     path <- riak_fetch_url(conn, bucket, key)
     expected_codes <- c(200, 300, 304)
@@ -135,20 +156,32 @@ riak_fetch <- function(conn, bucket, key) {
 }
 
 riak_new_json_object <- function(value, bucket, key=NULL, vclock=NULL, meta=NULL, index=NULL, link=NULL) {
-    list(value=value, bucket=bucket, key=key, content_type="application/json", vclock=vclock, meta=meta, index=index, link=link )    
+    list(value=value, bucket=bucket, key=key, content_type="application/json",
+         vclock=vclock, meta=meta, index=index, link=link )
 }
 
 riak_new_object <- function(value, bucket, key=NULL, content_type, vclock=NULL, meta=NULL, index=NULL, link=NULL) {
-    list(value=value, bucket=bucket, key=key, content_type=content_type, vclock=vclock, meta=meta, index=index, link=link )    
+    list(value=value, bucket=bucket, key=key, content_type=content_type,
+         vclock=vclock, meta=meta, index=index, link=link )
 }
 
-# TODO: make case consistent
-riak_new_store_options <- function(w=NULL,dw=NULL,pw=NULL,returnbody=FALSE, IfNoneMatch=NULL, 
-        IfMatch=NULL, IfModifiedSince=NULL, IfUnmodifiedSince=NULL, ETag=NULL, LastModified=NULL) {
-    list(w=w, dw=dw, pw=pw, returnbody=returnbody, IfNoneMatch=IfNoneMatch, 
-            IfMatch=IfMatch, IfModifiedSince=IfModifiedSince, IfUnmodifiedSince=IfUnmodifiedSince,
-            IfNoneMatch=IfNoneMatch)
+# TODO: make case in options consistent
+riak_new_store_options <- function(W=NULL, DW=NULL, PW=NULL, ReturnBody=FALSE, IfNoneMatch=NULL,
+                                   IfMatch=NULL, IfModifiedSince=NULL, IfUnmodifiedSince=NULL,
+                                   ETag=NULL, LastModified=NULL) {
+  list(W=W, DW=DW, PW=PW, ReturnBody=ReturnBody, IfNoneMatch=IfNoneMatch,
+       IfMatch=IfMatch, IfModifiedSince=IfModifiedSince,
+       IfUnmodifiedSince=IfUnmodifiedSince, IfNoneMatch=IfNoneMatch)
 }
+
+# TODO: make case in options consistent
+riak_new_fetch_options <- function(R=NULL, PR=NULL, BasicQuorum=NULL,
+                                   NotFoundOk=NULL, VTag=NULL, IfNoneMatch=NULL,
+                                   IfModifiedSince=NULL) {
+  list(R=R, PR=PR, BasicQuorum=BasicQuorum, NotFoundOk=NotFoundOk,
+       VTag=VTag, IfNoneMatch=IfNoneMatch, IfModifiedSince=IfModifiedSince)
+}
+
 
 #TODO: check for location, PUT vs POST options
 riak_store <- function(conn, obj, options=NULL) {
@@ -157,19 +190,27 @@ riak_store <- function(conn, obj, options=NULL) {
     }
     path <- riak_store_url(conn, obj$bucket, obj$key)
     expected_codes <- c(200, 201, 204, 300)
-    #add_headers(ContentType=obj$content_type)
+
     if(is.null(obj$key)) {
         accept_json()
-        result <- POST(path, body=obj$value, add_headers("Content-Type" = obj$content_type))    
+        result <- POST(path, body=obj$value,
+                       add_headers("Content-Type" = obj$content_type))
         result
-        #content(riak_check_status(conn, expected_codes, result))
+        if(options$ReturnBody == TRUE) {
+          content(riak_check_status(conn, expected_codes, result))
+        } else {
+          result
+        }
     } else {
-        accept_json()     
-        result <- PUT(path, body=obj$value, add_headers("Content-Type" = obj$content_type))
-        result
-        #content(riak_check_status(conn, expected_codes, result))
+        accept_json()
+        result <- PUT(path, body=obj$value,
+                      add_headers("Content-Type" = obj$content_type))
+        if(options$ReturnBody == TRUE) {
+          content(riak_check_status(conn, expected_codes, result))
+        } else {
+          result
+        }
     }
-
 }
 
 riak_2i_exact <- function(conn, bucket, index, value) {
@@ -186,6 +227,7 @@ riak_2i_range <- function(conn, bucket, index, minvalue, maxvalue) {
     content(riak_check_status(conn, expected_codes, result))
 }
 
+## TODO: cleanup, make a riak_new_mr object w/ all M/R params
 riak_mapreduce <- function(conn, query) {
     # TODO: chunked option
     path <- riak_mapred_url(conn)
@@ -199,13 +241,13 @@ riak_mapreduce <- function(conn, query) {
 riak_list_keys <- function(conn, bucket, stream=TRUE, props=TRUE) {
     path <- riak_list_keys_url(conn, bucket, stream)
     expected_codes <- c(200)
+    content_type <- "application/json"
     if(stream) {
-        print(path)
-        result <- GET(path, add_headers("Content-Type" = "application/json", 
+        result <- GET(path, add_headers("Content-Type" = content_type,
                                         "Transfer-Encoding" = "chunked"))
     } else {
-        result <- GET(path, 
-            add_headers("Content-Type" = "application/json"))
+        result <- GET(path,
+            add_headers("Content-Type" = content_type))
     }
     content(riak_check_status(conn, expected_codes, result))
 }

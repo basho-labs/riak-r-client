@@ -36,7 +36,7 @@ Contents of demo.R pasted below:
 ```
 source("~/basho/riak-r-client/riak.R")
 
-conn <- riak_connection("localhost",10018)
+conn <- riak_http_connection("localhost",10018)
 
 
 #######
