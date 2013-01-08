@@ -21,7 +21,8 @@ riak-r-client
 * RCurl
 * httr
 * rjson
-* (in the future, Rcpp from RProtobuf)
+
+* (in the future, Rcpp and RProtobuf)
 
 (Easily installed in R through `Packages & Data -> Package Installer`)
 

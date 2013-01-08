@@ -297,7 +297,7 @@ riak_fetch_raw <- function(conn, bucket, key, opts=NULL) {
   }
 }
 
-
+# TODO: come up with a standard Riak object format.
 riak_fetch <- function(conn, bucket, key, opts=NULL) {
   result <- riak_fetch_raw(conn, bucket, key, opts)
   content(result, as="parsed")
