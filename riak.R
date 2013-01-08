@@ -29,6 +29,19 @@ library(rjson)
 # use the connection to determine if the URL's are using the
 # new style or old style
 
+url_param <- function(name, value) {
+  if(is.null(value)) {
+    NULL
+  } else {
+    if(is.logical(value)) {
+      paste(name,"=",curlEscape(tolower(value)), sep="")
+    } else {
+      paste(name,"=",curlEscape(value), sep="")
+    }
+  }
+}
+
+
 riak_base_url <- function(conn) {
    if(conn$secure == TRUE) {
       proto <- "https"
@@ -39,8 +52,20 @@ riak_base_url <- function(conn) {
     base_url
 }
 
-riak_fetch_url <- function(conn, bucket, key) {
-    paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
+riak_fetch_url <- function(conn, bucket, key, options) {
+    if(is.null(options)) {
+      params <- ""
+    } else {
+      additional_params <- c(url_param("r", options$R),
+                                url_param("pr", options$PR),
+                                url_param("basic_quorum", options$BasicQuorum),
+                                url_param("notfound_ok", options$NotFoundOk),
+                                url_param("vtag", options$VTag))
+      additional_params2 <- paste(additional_params, collapse="&")
+      params <- paste("?", additional_params2, sep="")
+    }
+    url <- paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
+    paste(url, params, sep="")
 }
 
 riak_store_url <- function(conn, bucket, key=NULL) {
@@ -135,36 +160,6 @@ riak_status <- function(conn, as="json") {
     content(riak_check_status(conn, expected_codes, result))
 }
 
-# riak_fetch_raw returns the entire HTTP response
-# you'll need to decode the response using content()
-riak_fetch_raw <- function(conn, bucket, key) {
-    path <- riak_fetch_url(conn, bucket, key)
-    expected_codes <- c(200, 300, 304)
-    result <- GET(path)
-    status_code <- result$status_code
-    if(any(expected_codes == status_code)) {
-        result
-    } else {
-        # TODO
-        simpleError("Error fetching value from Riak")
-    }
-}
-
-riak_fetch <- function(conn, bucket, key) {
-    result <- riak_fetch_raw(conn, bucket, key)
-    content(result, as="parsed")
-}
-
-riak_new_json_object <- function(value, bucket, key=NULL, vclock=NULL, meta=NULL, index=NULL, link=NULL) {
-    list(value=value, bucket=bucket, key=key, content_type="application/json",
-         vclock=vclock, meta=meta, index=index, link=link )
-}
-
-riak_new_object <- function(value, bucket, key=NULL, content_type, vclock=NULL, meta=NULL, index=NULL, link=NULL) {
-    list(value=value, bucket=bucket, key=key, content_type=content_type,
-         vclock=vclock, meta=meta, index=index, link=link )
-}
-
 # TODO: make case in options consistent
 riak_new_store_options <- function(W=NULL, DW=NULL, PW=NULL, ReturnBody=FALSE, IfNoneMatch=NULL,
                                    IfMatch=NULL, IfModifiedSince=NULL, IfUnmodifiedSince=NULL,
@@ -181,6 +176,38 @@ riak_new_fetch_options <- function(R=NULL, PR=NULL, BasicQuorum=NULL,
   list(R=R, PR=PR, BasicQuorum=BasicQuorum, NotFoundOk=NotFoundOk,
        VTag=VTag, IfNoneMatch=IfNoneMatch, IfModifiedSince=IfModifiedSince)
 }
+
+# riak_fetch_raw returns the entire HTTP response
+# you'll need to decode the response using content()
+riak_fetch_raw <- function(conn, bucket, key, options=NULL) {
+    path <- riak_fetch_url(conn, bucket, key, options)
+    expected_codes <- c(200, 300, 304)
+    result <- GET(path)
+    status_code <- result$status_code
+    if(any(expected_codes == status_code)) {
+        result
+    } else {
+        # TODO
+        simpleError("Error fetching value from Riak")
+    }
+}
+
+
+riak_fetch <- function(conn, bucket, key, options=NULL) {
+    result <- riak_fetch_raw(conn, bucket, key, options)
+    content(result, as="parsed")
+}
+
+riak_new_json_object <- function(value, bucket, key=NULL, vclock=NULL, meta=NULL, index=NULL, link=NULL) {
+    list(value=value, bucket=bucket, key=key, content_type="application/json",
+         vclock=vclock, meta=meta, index=index, link=link )
+}
+
+riak_new_object <- function(value, bucket, key=NULL, content_type, vclock=NULL, meta=NULL, index=NULL, link=NULL) {
+    list(value=value, bucket=bucket, key=key, content_type=content_type,
+         vclock=vclock, meta=meta, index=index, link=link )
+}
+
 
 
 #TODO: check for location, PUT vs POST options
