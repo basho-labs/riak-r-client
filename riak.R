@@ -52,15 +52,15 @@ riak_base_url <- function(conn) {
     base_url
 }
 
-riak_fetch_url <- function(conn, bucket, key, options) {
-    if(is.null(options)) {
+riak_fetch_url <- function(conn, bucket, key, opts=NULL) {
+    if(is.null(opts)) {
       params <- ""
     } else {
-      additional_params <- c(url_param("r", options$R),
-                                url_param("pr", options$PR),
-                                url_param("basic_quorum", options$BasicQuorum),
-                                url_param("notfound_ok", options$NotFoundOk),
-                                url_param("vtag", options$VTag))
+      additional_params <- c(url_param("r", opts$R),
+                                url_param("pr", opts$PR),
+                                url_param("basic_quorum", opts$BasicQuorum),
+                                url_param("notfound_ok", opts$NotFoundOk),
+                                url_param("vtag", opts$VTag))
       additional_params2 <- paste(additional_params, collapse="&")
       params <- paste("?", additional_params2, sep="")
     }
@@ -68,7 +68,8 @@ riak_fetch_url <- function(conn, bucket, key, options) {
     paste(url, params, sep="")
 }
 
-riak_store_url <- function(conn, bucket, key=NULL) {
+riak_store_url <- function(conn, bucket, key=NULL, opts=NULL) {
+    # if(is.null(opts)...
     if(is.null(key)) {
         paste(riak_base_url(conn), "buckets", bucket, "keys", sep="/")
     } else {
@@ -160,7 +161,6 @@ riak_status <- function(conn, as="json") {
     content(riak_check_status(conn, expected_codes, result))
 }
 
-# TODO: make case in options consistent
 riak_new_store_options <- function(W=NULL, DW=NULL, PW=NULL, ReturnBody=FALSE, IfNoneMatch=NULL,
                                    IfMatch=NULL, IfModifiedSince=NULL, IfUnmodifiedSince=NULL,
                                    ETag=NULL, LastModified=NULL) {
@@ -169,7 +169,6 @@ riak_new_store_options <- function(W=NULL, DW=NULL, PW=NULL, ReturnBody=FALSE, I
        IfUnmodifiedSince=IfUnmodifiedSince, IfNoneMatch=IfNoneMatch)
 }
 
-# TODO: make case in options consistent
 riak_new_fetch_options <- function(R=NULL, PR=NULL, BasicQuorum=NULL,
                                    NotFoundOk=NULL, VTag=NULL, IfNoneMatch=NULL,
                                    IfModifiedSince=NULL) {
@@ -177,12 +176,17 @@ riak_new_fetch_options <- function(R=NULL, PR=NULL, BasicQuorum=NULL,
        VTag=VTag, IfNoneMatch=IfNoneMatch, IfModifiedSince=IfModifiedSince)
 }
 
+riak_fetch_headers <- function(opts) {
+  # This will filter out NULL header options automatically
+  c("If-None-Match"=opts$IfNoneMatch, "If-Modified-Since"=opts$IfModifiedSince)
+}
+
 # riak_fetch_raw returns the entire HTTP response
 # you'll need to decode the response using content()
-riak_fetch_raw <- function(conn, bucket, key, options=NULL) {
-    path <- riak_fetch_url(conn, bucket, key, options)
+riak_fetch_raw <- function(conn, bucket, key, opts=NULL) {
+    path <- riak_fetch_url(conn, bucket, key, opts)
     expected_codes <- c(200, 300, 304)
-    result <- GET(path)
+    result <- GET(path, add_headers(riak_fetch_headers(opts)))
     status_code <- result$status_code
     if(any(expected_codes == status_code)) {
         result
@@ -193,8 +197,8 @@ riak_fetch_raw <- function(conn, bucket, key, options=NULL) {
 }
 
 
-riak_fetch <- function(conn, bucket, key, options=NULL) {
-    result <- riak_fetch_raw(conn, bucket, key, options)
+riak_fetch <- function(conn, bucket, key, opts=NULL) {
+    result <- riak_fetch_raw(conn, bucket, key, opts)
     content(result, as="parsed")
 }
 
@@ -211,9 +215,10 @@ riak_new_object <- function(value, bucket, key=NULL, content_type, vclock=NULL, 
 
 
 #TODO: check for location, PUT vs POST options
-riak_store <- function(conn, obj, options=NULL) {
-    if(is.null(options)) {
-        options = riak_new_store_options()
+riak_store <- function(conn, obj, opts=NULL) {
+    # TODO: options!
+    if(is.null(opts)) {
+        opts = riak_new_store_options()
     }
     path <- riak_store_url(conn, obj$bucket, obj$key)
     expected_codes <- c(200, 201, 204, 300)
@@ -223,7 +228,7 @@ riak_store <- function(conn, obj, options=NULL) {
         result <- POST(path, body=obj$value,
                        add_headers("Content-Type" = obj$content_type))
         result
-        if(options$ReturnBody == TRUE) {
+        if(opts$ReturnBody == TRUE) {
           content(riak_check_status(conn, expected_codes, result))
         } else {
           result
@@ -232,7 +237,7 @@ riak_store <- function(conn, obj, options=NULL) {
         accept_json()
         result <- PUT(path, body=obj$value,
                       add_headers("Content-Type" = obj$content_type))
-        if(options$ReturnBody == TRUE) {
+        if(opts$ReturnBody == TRUE) {
           content(riak_check_status(conn, expected_codes, result))
         } else {
           result
