@@ -52,6 +52,13 @@ riak_base_url <- function(conn) {
     base_url
 }
 
+
+# create a query string from a vector of params
+make_query_string <- function(params) {
+      params2 <- paste(params, collapse="&")
+      paste("?", params2, sep="")
+}
+
 riak_fetch_url <- function(conn, bucket, key, opts=NULL) {
     if(is.null(opts)) {
       params <- ""
@@ -61,20 +68,28 @@ riak_fetch_url <- function(conn, bucket, key, opts=NULL) {
                                 url_param("basic_quorum", opts$BasicQuorum),
                                 url_param("notfound_ok", opts$NotFoundOk),
                                 url_param("vtag", opts$VTag))
-      additional_params2 <- paste(additional_params, collapse="&")
-      params <- paste("?", additional_params2, sep="")
+      params <- make_query_string(additional_params)
     }
     url <- paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
     paste(url, params, sep="")
 }
 
 riak_store_url <- function(conn, bucket, key=NULL, opts=NULL) {
-    # if(is.null(opts)...
-    if(is.null(key)) {
-        paste(riak_base_url(conn), "buckets", bucket, "keys", sep="/")
+    if(is.null(opts)) {
+      params <- ""
     } else {
-        paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
+      additional_params <- c(url_param("w", opts$W),
+                             url_param("dw", opts$DW),
+                             url_param("pw", opts$PW),
+                             url_param("returnbody",opts$ReturnBody))
+      params <- make_query_string(additional_params)
     }
+    if(is.null(key)) {
+        url <- paste(riak_base_url(conn), "buckets", bucket, "keys", sep="/")
+    } else {
+        url <- paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
+    }
+    paste(url, params, sep="")
 }
 
 riak_ping_url <- function(conn) {
@@ -166,7 +181,7 @@ riak_new_store_options <- function(W=NULL, DW=NULL, PW=NULL, ReturnBody=FALSE, I
                                    ETag=NULL, LastModified=NULL) {
   list(W=W, DW=DW, PW=PW, ReturnBody=ReturnBody, IfNoneMatch=IfNoneMatch,
        IfMatch=IfMatch, IfModifiedSince=IfModifiedSince,
-       IfUnmodifiedSince=IfUnmodifiedSince, IfNoneMatch=IfNoneMatch)
+       IfUnmodifiedSince=IfUnmodifiedSince)
 }
 
 riak_new_fetch_options <- function(R=NULL, PR=NULL, BasicQuorum=NULL,
@@ -176,13 +191,32 @@ riak_new_fetch_options <- function(R=NULL, PR=NULL, BasicQuorum=NULL,
        VTag=VTag, IfNoneMatch=IfNoneMatch, IfModifiedSince=IfModifiedSince)
 }
 
+# TODO: need meta, indexes, links
+riak_store_headers_put <- function(content_type, opts, vclock) {
+  c("Content-Type"=content_type,
+    "If-None-Match"=opts$IfNoneMatch,
+    "If-Match"=opts$IfMatch,
+    "If-Modified-Since"=opts$IfModifiedSince,
+    "If-Unmodified-Since"=opts$IfUnmodifiedSince,
+    "X-Riak-Vclock"=vclock)
+}
+
+# TODO: need meta, indexes, links
+riak_store_headers_post <- function(content_type, opts, vclock) {
+  c("Content-Type"=content_type,
+    "X-Riak-Vclock"=vclock)
+}
+
+
 riak_fetch_headers <- function(opts) {
   # This will filter out NULL header options automatically
-  c("If-None-Match"=opts$IfNoneMatch, "If-Modified-Since"=opts$IfModifiedSince)
+  c("If-None-Match"=opts$IfNoneMatch,
+    "If-Modified-Since"=opts$IfModifiedSince)
 }
 
 # riak_fetch_raw returns the entire HTTP response
 # you'll need to decode the response using content()
+# TODO: multipart/mixed accept
 riak_fetch_raw <- function(conn, bucket, key, opts=NULL) {
     path <- riak_fetch_url(conn, bucket, key, opts)
     expected_codes <- c(200, 300, 304)
@@ -213,20 +247,16 @@ riak_new_object <- function(value, bucket, key=NULL, content_type, vclock=NULL, 
 }
 
 
-
-#TODO: check for location, PUT vs POST options
+#TODO: check for location
+#TODO: Meta, Index
 riak_store <- function(conn, obj, opts=NULL) {
-    # TODO: options!
-    if(is.null(opts)) {
-        opts = riak_new_store_options()
-    }
     path <- riak_store_url(conn, obj$bucket, obj$key)
     expected_codes <- c(200, 201, 204, 300)
-
     if(is.null(obj$key)) {
         accept_json()
+        headers <- riak_store_headers_post(obj$content_type, opts, obj$vclock)
         result <- POST(path, body=obj$value,
-                       add_headers("Content-Type" = obj$content_type))
+                       add_headers(headers))
         result
         if(opts$ReturnBody == TRUE) {
           content(riak_check_status(conn, expected_codes, result))
@@ -235,8 +265,9 @@ riak_store <- function(conn, obj, opts=NULL) {
         }
     } else {
         accept_json()
+        headers <- riak_store_headers_put(obj$content_type, opts, obj$vclock)
         result <- PUT(path, body=obj$value,
-                      add_headers("Content-Type" = obj$content_type))
+                      add_headers(headers))
         if(opts$ReturnBody == TRUE) {
           content(riak_check_status(conn, expected_codes, result))
         } else {
