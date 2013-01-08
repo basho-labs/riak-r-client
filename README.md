@@ -7,14 +7,10 @@ riak-r-client
 
 - This is a work in progress. Probably slow and buggy at the moment. The interface is very likely to change.
 
-- **TODO**: 
+- **TODO**:
   - implement additional store/fetch options
-  - fix mapred  
-  - delete object
-  - bucket props
+  - fix mapred
   - link walking
-  - list resources
-  - list buckets
   - retrier/resolver
 
   - currently the interface uses HTTP, however we'd like to add protobuffs in the future.
@@ -25,10 +21,11 @@ riak-r-client
 * RCurl
 * httr
 * rjson
+* (in the future, Rcpp from RProtobuf)
 
 (Easily installed in R through `Packages & Data -> Package Installer`)
 
-  
+
 # Demo
 
 Contents of demo.R pasted below:
