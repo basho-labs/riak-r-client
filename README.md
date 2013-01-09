@@ -12,7 +12,7 @@ riak-r-client
   - fix mapred
   - link walking
   - retrier/resolver
-
+  - package to CRAN
   - currently the interface uses HTTP, however we'd like to add protobuffs in the future.
 
 # Dependencies:
