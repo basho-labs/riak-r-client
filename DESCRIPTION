@@ -1,9 +1,9 @@
 Package: riak-r-client
 Type: Package
-Title: What the package does (short line)
+Title: An R client for Riak
 Version: 1.0
 Date: 2013-01-10
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: Dave Parfitt
+Maintainer: dparfitt@basho.com
+Description: The riak-r-client allows you to connect to a Riak database to store, fetch and delete data. Additionally, you can perform secondary index queries, map/reduce queries, and gather database statistics.
+License: Apache 2.0
