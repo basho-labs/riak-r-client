@@ -73,29 +73,3 @@ rawobj$headers$`x-riak-vclock`
 riak_delete(conn, "demo_type_1", bucket, "Key_10")
 
 
-#######
-## graph some Riak stats over time
-#######
-
-# I ran basho_bench against the node while this ran
-get_samples <- function() {
-	vgt <- rep(NA, 10)
-	nfsm <- rep(NA, 10)
-	
-	for(i in seq(1,10)) {
-		Sys.sleep(5) # sleep 5 seconds
-		stats <- riak_status(conn)
-		vgt[i] <- stats$node_gets_total
-		nfsm[i] <- stats$node_get_fsm_time_99
-	}
-	list(vnode_gets_total=vgt, node_get_fsm_time_99=nfsm)
-}
-
-samples <- get_samples()
-plot(samples$vnode_gets_total, type="o", col="blue")
-title(main="Riak data!", col.main="red", font.main=4)
-
-plot(samples$node_get_fsm_time_99, type="o", col="blue")
-title(main="Riak data!", col.main="red", font.main=4)
-
-
