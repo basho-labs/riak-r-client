@@ -70,8 +70,19 @@ riak_status <- function(conn, as="json") {
 # get a JSON encoded object from RIAK
 riak_fetch <- function(conn, bucket_type, bucket, key, opts=NULL) {
   result <- riak_fetch_raw(conn, bucket_type, bucket, key, opts)
-  fromJSON(content(result, as="text"))
+  expected_codes <- c(200, 202, 300, 304)
+  status_code <- result$status_code
+  if (any(expected_codes == status_code)) {
+    res.json <- content(result, as="text")
+    res.obj <- fromJSON(res.json)
+    return(res.obj)
+  } else if (status_code == 404) {
+    return("404: Object Not Found")
+  } else {
+    simpleError("Error fetching value from Riak")
+  }
 }
+
 
 riak_store <- function(conn, bucket_type, bucket, key, value, opts=list("ReturnBody"=TRUE)) {
   stopifnot(!is.null(bucket_type))
@@ -121,7 +132,7 @@ riak_store_object <- function(conn, obj, opts=list("ReturnBody"=TRUE)) {
 
 # remove an object from the store
 riak_delete <- function(conn, bucket_type, bucket, key, opts=NULL) {
-  path <- riak_delete_url(conn, bucket_type, bucket, key, opts)
+  path <- riak_delete_url(conn, bucket_type, bucket, key)
   expected_codes <- c(204, 404)
   # 404 responses are “normal” in the sense that DELETE operations are idempotent
   # and not finding the resource has the same effect as deleting it.
@@ -196,7 +207,7 @@ riak_store_url <- function(conn, bucket_type, bucket, key=NULL, opts=NULL) {
 }
 
 
-riak_delete_url <- function(conn, bucket_type, bucket, key, opts) {
+riak_delete_url <- function(conn, bucket_type, bucket, key, opts=NULL) {
   if(is.null(opts)) {
     params <- ""
   } else {
@@ -211,6 +222,23 @@ riak_delete_url <- function(conn, bucket_type, bucket, key, opts) {
   url <- paste(riak_base_url(conn), "types", bucket_type, "buckets", bucket, "keys", key, sep="/")
   paste(url, params, sep="")  
 }
+
+riak_delete_url2 <- function(conn, bucket, key) {
+  if(is.null(opts)) {
+    params <- ""
+  } else {
+    additional_params <- c(url_param("rw", opts$RW),
+                           url_param("r", opts$R),
+                           url_param("pr", opts$PR),
+                           url_param("w", opts$W),
+                           url_param("dw", opts$DW),
+                           url_param("pw", opts$PW))
+    params <- make_query_string(additional_params)
+  }
+  url <- paste(riak_base_url(conn), "buckets", bucket, "keys", key, sep="/")
+  paste(url, params, sep="")  
+}
+
 
 riak_ping_url <- function(conn) {
   paste(riak_base_url(conn), "/ping", sep="")
@@ -247,20 +275,10 @@ riak_store_headers_post <- function(content_type, opts, vclock) {
 }
 
 
-# riak_fetch_raw returns the entire HTTP response
-# you'll need to decode the response using content()
-# TODO: multipart/mixed accept
+# returns the entire HTTP response
 riak_fetch_raw <- function(conn, bucket_type, bucket, key, opts=NULL) {
   path <- riak_fetch_url(conn, bucket_type, bucket, key, opts)
-  expected_codes <- c(200, 300, 304)
-  result <- GET(path, add_headers(riak_fetch_headers(opts)))
-  status_code <- result$status_code
-  if(any(expected_codes == status_code)) {
-    result
-  } else {
-    # TODO
-    simpleError("Error fetching value from Riak")
-  }
+  GET(path, add_headers(riak_fetch_headers(opts)))
 }
 
 riak_fetch_headers <- function(opts) {
