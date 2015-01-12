@@ -1,7 +1,7 @@
-library(RCurl)
-library(bitops)
-library(httr)
-library(jsonlite)
+#' @import httr
+#' @import RCurl
+#' @import bitops
+#' @import jsonlite
 
 # -----------------------------------------------------------------------------
 # top level functions: connect, ping, status etc
