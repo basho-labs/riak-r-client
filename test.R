@@ -9,7 +9,6 @@ conn <- riak_http_connection(host = RIAK_CLUSTER, port = PORT)
 
 # test
 print.riak_connection(conn)
-
 riak_ping(conn)
 riak_status(conn)
 

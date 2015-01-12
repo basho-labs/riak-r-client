@@ -1,4 +1,5 @@
 library(RCurl)
+library(bitops)
 library(httr)
 library(jsonlite)
 
@@ -6,12 +7,16 @@ library(jsonlite)
 # top level functions: connect, ping, status etc
 # -----------------------------------------------------------------------------
 
+# connect to a riak cluster
+#' @export
 riak_http_connection <- function(host, port, https=FALSE) {
   conn <- list(riak_http_host = host, riak_http_port = port, secure=https)
   class(conn) <- "riak_connection"
   conn
 }
 
+# print the connection details
+#' @export
 print.riak_connection <- function(conn) {
   if(conn$secure== TRUE) {
     proto <- "https"
@@ -24,6 +29,7 @@ print.riak_connection <- function(conn) {
 }
 
 # check response code against a list of expected response codes
+#' @export
 riak_check_status <- function(conn, expected_codes, response) {
   status_code <- response$status_code
   if(any(expected_codes == status_code)) {
@@ -35,6 +41,8 @@ riak_check_status <- function(conn, expected_codes, response) {
   }
 }
 
+# check if the riak cluster is running
+#' @export
 riak_ping <- function(conn) {
   path <- riak_ping_url(conn)
   expected_codes = c(200)
@@ -43,6 +51,8 @@ riak_ping <- function(conn) {
   content(res, as="text")
 }
 
+# status query against the riak cluster
+#' @export
 riak_status <- function(conn, as="json") {
   path <- riak_stats_url(conn)
   expected_codes = c(200)
@@ -68,6 +78,7 @@ riak_status <- function(conn, as="json") {
 # -----------------------------------------------------------------------------
 
 # get a JSON encoded object from RIAK
+#' @export
 riak_fetch <- function(conn, bucket_type, bucket, key, opts=NULL) {
   result <- riak_fetch_raw(conn, bucket_type, bucket, key, opts)
   expected_codes <- c(200, 202, 300, 304)
@@ -84,6 +95,7 @@ riak_fetch <- function(conn, bucket_type, bucket, key, opts=NULL) {
 }
 
 
+#' @export
 riak_store <- function(conn, bucket_type, bucket, key, value, opts=list("ReturnBody"=TRUE)) {
   stopifnot(!is.null(bucket_type))
   stopifnot(!is.null(bucket))
@@ -108,6 +120,7 @@ riak_store <- function(conn, bucket_type, bucket, key, value, opts=list("ReturnB
 
 # add an object to the riak store
 # note that in this version the object has it's own bucket and key already
+#' @export
 riak_store_object <- function(conn, obj, opts=list("ReturnBody"=TRUE)) {
   path <- riak_store_url(conn, obj$bucket_type, obj$bucket, obj$key)
   expected_codes <- c(200, 201, 204, 300)
@@ -134,6 +147,7 @@ riak_store_object <- function(conn, obj, opts=list("ReturnBody"=TRUE)) {
 
 
 # remove an object from the store
+#' @export
 riak_delete <- function(conn, bucket_type, bucket, key, opts=NULL) {
   path <- riak_delete_url(conn, bucket_type, bucket, key)
   expected_codes <- c(204, 404)
