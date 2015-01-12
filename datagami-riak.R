@@ -119,7 +119,10 @@ riak_store_object <- function(conn, obj, opts=list("ReturnBody"=TRUE)) {
 
   accept_json()
   headers <- riak_store_headers_put(obj$content_type, opts, obj$vclock)
-  result <- PUT(path, body=obj$value, add_headers(headers))
+  
+  # Our own json encoding
+  encoded_value <- toJSON(obj$value, digits=16, auto_unbox = TRUE)
+  result <- PUT(path, body=encoded_value, add_headers(headers))
   print(result)
   if(opts$ReturnBody == TRUE) {
     res <- riak_check_status(conn, expected_codes, result) 
