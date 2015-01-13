@@ -95,8 +95,10 @@ riak_fetch <- function(conn, bucket_type, bucket, key, opts=NULL) {
 }
 
 
+# Store value in bucket as key. Defaults to formatting it as json
 #' @export
-riak_store <- function(conn, bucket_type, bucket, key, value, opts=list("ReturnBody"=TRUE)) {
+riak_store <- function(conn, bucket_type, bucket, key, value, json=TRUE, opts=list("ReturnBody"=TRUE)) {
+  
   stopifnot(!is.null(bucket_type))
   stopifnot(!is.null(bucket))
   stopifnot(!is.null(key))
@@ -105,40 +107,23 @@ riak_store <- function(conn, bucket_type, bucket, key, value, opts=list("ReturnB
   path <- riak_store_url(conn, bucket_type, bucket, key)
   expected_codes <- c(200, 201, 204, 300)
   
+  if (json) {
+    # JSON encode object
+    content_type <- "application/json"
+    value <- toJSON(value, digits=16, auto_unbox=TRUE)
+  } else {
+    # Binary
+    content_type <- "application/octet-stream"
+  }
+  
+  # Package object
+  obj <- riak_new_object(value, bucket_type, bucket, key, content_type)
+    
   accept_json()
   headers <- riak_store_headers_put(obj$content_type, opts, obj$vclock)
   result <- PUT(path, body=obj$value, add_headers(headers))
   if(opts$ReturnBody == TRUE) {
     res <- riak_check_status(conn, expected_codes, result)
-    content(res, as="text")
-  } else {
-    result
-  }
-}
-
-
-
-# add an object to the riak store
-# note that in this version the object has it's own bucket and key already
-#' @export
-riak_store_object <- function(conn, obj, opts=list("ReturnBody"=TRUE)) {
-  path <- riak_store_url(conn, obj$bucket_type, obj$bucket, obj$key)
-  expected_codes <- c(200, 201, 204, 300)
-  
-  stopifnot(!is.null(obj$bucket_type))
-  stopifnot(!is.null(obj$bucket))
-  stopifnot(!is.null(obj$key))
-  stopifnot(!is.null(obj$value))
-
-  accept_json()
-  headers <- riak_store_headers_put(obj$content_type, opts, obj$vclock)
-  
-  # Our own json encoding
-  encoded_value <- toJSON(obj$value, digits=16, auto_unbox = TRUE)
-  result <- PUT(path, body=encoded_value, add_headers(headers))
-  print(result)
-  if(opts$ReturnBody == TRUE) {
-    res <- riak_check_status(conn, expected_codes, result) 
     content(res, as="text")
   } else {
     result
