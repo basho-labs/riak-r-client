@@ -79,13 +79,17 @@ riak_status <- function(conn, as="json") {
 
 # get a JSON encoded object from RIAK
 #' @export
-riak_fetch <- function(conn, bucket_type, bucket, key, opts=NULL) {
+riak_fetch <- function(conn, bucket_type, bucket, key, json=TRUE, opts=NULL) {
   result <- riak_fetch_raw(conn, bucket_type, bucket, key, opts)
   expected_codes <- c(200, 202, 300, 304)
   status_code <- result$status_code
   if (any(expected_codes == status_code)) {
-    res.json <- content(result, as="text")
-    res.obj <- fromJSON(res.json)
+    if (json) {
+      res.json <- content(result, as="text")
+      res.obj <- fromJSON(res.json)
+    } else {
+      res.obj <- content(result, as="raw")
+    }
     return(res.obj)
   } else if (status_code == 404) {
     return("404: Object Not Found")
