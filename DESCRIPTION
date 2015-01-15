@@ -1,6 +1,6 @@
 Package: riak
 Title: Riak client for R
-Version: 0.7
+Version: 0.6
 Authors@R: "Keiran Thompson <keiran@datagami.info> [aut, cre]"
 Description: "Forked from the Basho experimental library.  Major change is to
     default encode everything in unboxed json.  Supports simple fetch, store
