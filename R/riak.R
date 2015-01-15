@@ -101,7 +101,7 @@ riak_fetch <- function(conn, bucket_type, bucket, key, json=TRUE, opts=NULL) {
 
 # Store value in bucket as key. Defaults to formatting it as json
 #' @export
-riak_store <- function(conn, bucket_type, bucket, key, value, json=TRUE, json.matrix="rowmajor", json.dataframe='columns', opts=list("ReturnBody"=TRUE)) {
+riak_store <- function(conn, bucket_type, bucket, key, value, json=TRUE, json.matrix="columnmajor", json.dataframe='columns', opts=list("ReturnBody"=TRUE)) {
   
   stopifnot(!is.null(bucket_type))
   stopifnot(!is.null(bucket))
