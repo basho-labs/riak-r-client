@@ -117,7 +117,7 @@ riak_store <- function(conn, bucket_type, bucket, key, value,
   # JSON encode object
   content_type <- "application/json"
   json.matrix <- match.arg(json.matrix)
-  json.dataframe <- match.args(json.dataframe)
+  json.dataframe <- match.arg(json.dataframe)
   value <- toJSON(value, digits=16, auto_unbox=TRUE, matrix=json.matrix, dataframe=json.dataframe)
   
   # Package object
